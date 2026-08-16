@@ -183,7 +183,7 @@
 <body>
 <canvas id="canvas"></canvas>
 
-<audio id="bgm" src="bgm.m4a" loop preload="auto"></audio>
+<audio id="bgm" src="bgm.m4a" loop preload="auto" autoplay playsinline></audio>
 <button id="music-btn" type="button" aria-label="背景音乐" title="背景音乐">&#9834;</button>
 
 <div id="hint">&#128140; 轻点屏幕，查收一封给你的信</div>
@@ -544,20 +544,25 @@
   }
 
 
-  // ---------- 背景音乐：林倛玉《同花顺》 ----------
+
+  // ---------- 背景音乐：林倛玉《同花顺》（进入页面自动播放） ----------
   const bgm = document.getElementById('bgm');
   const musicBtn = document.getElementById('music-btn');
   let musicReady = false;
+  function markPlaying() {
+    musicReady = true;
+    musicBtn.classList.add('playing');
+    musicBtn.classList.remove('paused');
+  }
   function playBgm() {
     if (!bgm || musicReady) return;
     bgm.volume = 0.8;
     const p = bgm.play();
     if (p) {
-      p.then(() => {
-        musicReady = true;
-        musicBtn.classList.add('playing');
-        musicBtn.classList.remove('paused');
-      }).catch(() => {});
+      p.then(markPlaying).catch(() => {
+        // 被系统拦截时，等首次触摸再自动补播
+        setTimeout(() => { if (!musicReady && bgm) bgm.play().then(markPlaying).catch(() => {}); }, 400);
+      });
     }
   }
   function toggleBgm() {
@@ -574,7 +579,13 @@
     musicBtn.classList.add('paused');
     musicBtn.addEventListener('click', e => { e.stopPropagation(); toggleBgm(); });
   }
-  window.addEventListener('load', playBgm);
+  function initBgm() {
+    playBgm();
+    if (window.WeixinJSBridge && window.WeixinJSBridge.invoke) playBgm();
+  }
+  if (document.readyState === 'complete') initBgm();
+  else window.addEventListener('load', initBgm);
+  document.addEventListener('WeixinJSBridgeReady', playBgm, { once: true });
   document.addEventListener('touchstart', playBgm, { once: true });
   document.addEventListener('click', playBgm, { once: true });
 
